@@ -30,7 +30,15 @@ add_user <- function(email, public_key, vault = NULL) {
   write_pem(key, path = user_file)
 }
 
+#' Get the SSH public key of a GitHub user
+#'
+#' @param github_user GitHub username.
+#' @param i Which key to get, in case the user has multiple keys.
+#'   `get_github_key()` retrieves the first key by default.
+#' @return Character scalar.
+#'
 #' @importFrom curl new_handle handle_setheaders curl_fetch_memory
+#' @export
 
 get_github_key <- function(github_user, i = 1) {
   url <- paste("https://api.github.com/users", github_user, "keys",
@@ -76,18 +84,26 @@ add_github_user <- function(github_user, email = NULL, vault = NULL,
   if (missing(email) || is.null(email)){
     email <- paste0("github-", github_user)
   }
-  key <- get_github_key(github_user)
+  key <- get_github_key(github_user, i = i)
   add_user(email = email, public_key = key, vault = vault)
 }
 
-
-#' @importFrom curl curl
+#' Retrieve the public key of a Travis CI repository
+#'
+#' @param travis_repo The repository slug, e.g. `gaborcsardi/secret`.
+#' @return Character scalar, the key. If the repository does not exist,
+#' or it is not user in Travis CI, an HTTP 404 error is thrown.
+#'
+#' @export
+#' @importFrom curl curl new_handle handle_setheaders
 #' @importFrom  jsonlite fromJSON
 
-get_travis_key <- function(travis_repo){
-  url <- paste("https://api.travis-ci.org/repos", travis_repo, "key",
+get_travis_key <- function(travis_repo) {
+  url <- paste("https://api.travis-ci.com/repos", travis_repo, "key",
                sep = "/")
-  r <- curl(url)
+  handle <- new_handle()
+  handle_setheaders(handle, Accept = "application/vnd.travis-ci.2.1+json")
+  r <- curl(url, handle = handle)
   k <- fromJSON(r)
   k <- k$key
   gsub(" RSA", "", k)
@@ -178,4 +194,25 @@ users_exist <- function(vault, users) {
 
 on_failure(users_exist) <- function(call, env) {
   paste0("Secret ", deparse(call$users), " do not exist")
+}
+
+#' @importFrom openssl fingerprint read_pubkey
+
+lookup_user <- function(key, vault) {
+  if (is.character(key)) {
+    key <- tryCatch(
+      read_key(key),
+      error = function(e) NULL
+    )
+    if (is.null(key)) return(NULL)
+  }
+  fp <- fingerprint(key)
+  for (pubkey in dir(file.path(vault, "users"), pattern = "\\.pem$")) {
+    pubkeyfile <- file.path(vault, "users", pubkey)
+    if (as.character(fp) == as.character(fingerprint(read_pubkey(pubkeyfile)))) {
+      user <- sub("\\.pem$", "", pubkey)
+      return(user)
+    }
+  }
+  NULL
 }

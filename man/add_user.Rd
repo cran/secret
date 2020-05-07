@@ -40,6 +40,7 @@ See \code{\link[=add_secret]{add_secret()}} or \code{\link[=share_secret]{share_
 }
 \examples{
 
+\dontrun{
 # The `secret` package contains some user keys for demonstration purposes.
 # In this example, Alice shares a secret with Bob using a vault.
 
@@ -103,9 +104,14 @@ list_secrets(vault)
 delete_user("alice", vault = vault)
 delete_user("bob", vault = vault)
 list_users(vault)
+
+}
 }
 \seealso{
-Other user functions: \code{\link{add_github_user}},
-  \code{\link{add_travis_user}}, \code{\link{delete_user}},
-  \code{\link{list_users}}
+Other user functions: 
+\code{\link{add_github_user}()},
+\code{\link{add_travis_user}()},
+\code{\link{delete_user}()},
+\code{\link{list_users}()}
 }
+\concept{user functions}
